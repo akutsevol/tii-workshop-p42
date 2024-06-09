@@ -1,5 +1,7 @@
 pub mod song {
-    // use std::fmt;
+    use std::fs::File;
+    use std::io::{self, Write, BufReader, BufRead};
+    use std::net::{TcpListener, TcpStream};
 
     const DAYS: [&str; 12] = [
         "first", "second", "third", "fourth", "fifth", "sixth",
@@ -90,5 +92,68 @@ pub mod song {
             }
             self.iter.next().map(|item| item.clone())
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn song_to_string<I>(iter: I) -> String
+    where
+        I: Iterator<Item = String>,
+    {
+        iter.collect::<Vec<String>>().join("\n")
+    }
+
+    #[allow(dead_code)]
+    pub fn song_to_file<I>(iter: I, path: &str) -> io::Result<()>
+    where
+        I: Iterator<Item = String>,
+    {
+        let mut file = File::create(path)?;
+        for line in iter {
+            writeln!(file, "{}", line)?;
+        }
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub fn song_to_tcp<I>(iter: I, address: &str) -> io::Result<()>
+    where
+        I: Iterator<Item = String>,
+    {
+        let mut stream = TcpStream::connect(address)?;
+        for line in iter {
+            writeln!(stream, "{}", line)?;
+        }
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub fn song_from_tcp(port: u16) -> io::Result<String> {
+        let listener = TcpListener::bind(("0.0.0.0", port))?;
+        // accept connections and process them, spawning a new thread for each one
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    // connection succeeded
+                    let reader = BufReader::new(stream);
+                    let mut received_data = String::new();
+                    for line in reader.lines() {
+                        if let Ok(line) = line {
+                            // writeln!(stdout, "{}", line).unwrap();
+                            received_data.push_str(&line);
+                            received_data.push('\n');
+                        }
+                    }
+                    // Stop listening after handling the first connection
+                    drop(listener);
+                    return Ok(received_data);
+                }
+                Err(e) => {
+                    /* connection failed */
+                    drop(listener);
+                    return Err(io::Error::new(io::ErrorKind::Other, format!("Connection failed, {}", e)));
+                }
+            }
+        }
+        Err(io::Error::new(io::ErrorKind::Other, "No data received"))
     }
 }
