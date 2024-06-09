@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-#[allow(unused_imports)]
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
@@ -61,9 +60,9 @@ impl Bank {
         let (mut liabilities, mut assets) = (0, 0);
         for user in self.users.values() {
             if user.balance < 0 {
-                liabilities += user.balance.abs() as u64;
+                liabilities += u64::try_from(user.balance.abs()).unwrap_or(u64::MAX);
             } else {
-                assets += user.balance as u64;
+                assets += u64::try_from(user.balance).unwrap_or(u64::MAX);
             }
         }
         (liabilities, assets)
