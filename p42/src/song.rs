@@ -1,11 +1,11 @@
-pub mod song {
+pub mod song_mod {
     use std::fs::File;
-    use std::io::{self, Write, BufReader, BufRead};
+    use std::io::{self, BufRead, BufReader, Write};
     use std::net::{TcpListener, TcpStream};
 
     const DAYS: [&str; 12] = [
-        "first", "second", "third", "fourth", "fifth", "sixth",
-        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth"
+        "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth",
+        "tenth", "eleventh", "twelfth",
     ];
 
     const GIFTS: [&str; 12] = [
@@ -20,7 +20,7 @@ pub mod song {
         "Nine ladies dancing",
         "Ten lords a-leaping",
         "Eleven pipers piping",
-        "Twelve drummers drumming"
+        "Twelve drummers drumming",
     ];
 
     pub struct SongIter {
@@ -41,17 +41,20 @@ pub mod song {
                 return None;
             }
 
-            let mut verse = format!("On the {} day of Christmas my true love sent to me:", DAYS[self.day]);
+            let mut verse = format!(
+                "On the {} day of Christmas my true love sent to me:",
+                DAYS[self.day]
+            );
 
             for gift_day in (0..=self.day).rev() {
                 if self.day > 0 && gift_day == 0 {
                     verse.push_str(" and ");
                 } else {
-                    verse.push_str(" ");
+                    verse.push(' ');
                 }
                 verse.push_str(GIFTS[gift_day]);
                 if gift_day > 0 {
-                    verse.push_str(",");
+                    verse.push(',');
                 }
             }
 
@@ -61,7 +64,9 @@ pub mod song {
     }
 
     pub fn numbered_song_iter() -> impl Iterator<Item = String> {
-        SongIter::new().enumerate().map(|(i, line)| format!("{:02}: {}", i + 1, line))
+        SongIter::new()
+            .enumerate()
+            .map(|(i, line)| format!("{:02}: {}", i + 1, line))
     }
 
     pub struct DuplicateIter<I> {
@@ -90,7 +95,7 @@ pub mod song {
                 self.count = self.n - 1;
                 self.iter.next()?;
             }
-            self.iter.next().map(|item| item.clone())
+            self.iter.next()
         }
     }
 
@@ -130,18 +135,15 @@ pub mod song {
     pub fn song_from_tcp(port: u16) -> io::Result<String> {
         let listener = TcpListener::bind(("0.0.0.0", port))?;
         // accept connections and process them, spawning a new thread for each one
-        for stream in listener.incoming() {
+        if let Some(stream) = listener.incoming().next() {
             match stream {
                 Ok(stream) => {
                     // connection succeeded
                     let reader = BufReader::new(stream);
                     let mut received_data = String::new();
-                    for line in reader.lines() {
-                        if let Ok(line) = line {
-                            // writeln!(stdout, "{}", line).unwrap();
-                            received_data.push_str(&line);
-                            received_data.push('\n');
-                        }
+                    for line in reader.lines().map_while(Result::ok) {
+                        received_data.push_str(&line);
+                        received_data.push('\n');
                     }
                     // Stop listening after handling the first connection
                     drop(listener);
@@ -150,7 +152,10 @@ pub mod song {
                 Err(e) => {
                     /* connection failed */
                     drop(listener);
-                    return Err(io::Error::new(io::ErrorKind::Other, format!("Connection failed, {}", e)));
+                    return Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        format!("Connection failed, {}", e),
+                    ));
                 }
             }
         }
