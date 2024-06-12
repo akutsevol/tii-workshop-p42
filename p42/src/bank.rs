@@ -69,16 +69,34 @@ impl Bank {
     }
 
     #[allow(dead_code)]
-    pub fn transfer_funds(&mut self, from_user: &str, to_user: &str, amount: u64) -> Result<(), String> {
-        let amount_i64: i64 = amount.try_into().map_err(|_| "Amount conversion error".to_string())?;
+    pub fn transfer_funds(
+        &mut self,
+        from_user: &str,
+        to_user: &str,
+        amount: u64,
+    ) -> Result<(), String> {
+        let amount_i64: i64 = amount
+            .try_into()
+            .map_err(|_| "Amount conversion error".to_string())?;
 
         // Check if the users exist and get their balances
-        let from_balance = self.users.get(from_user).map(|u| u.balance).ok_or_else(|| format!("User '{}' not found", from_user))?;
-        let to_balance = self.users.get(to_user).map(|u| u.balance).ok_or_else(|| format!("User '{}' not found", to_user))?;
+        let from_balance = self
+            .users
+            .get(from_user)
+            .map(|u| u.balance)
+            .ok_or_else(|| format!("User '{}' not found", from_user))?;
+        let to_balance = self
+            .users
+            .get(to_user)
+            .map(|u| u.balance)
+            .ok_or_else(|| format!("User '{}' not found", to_user))?;
 
         // Check if the transfer is possible
         if from_balance < amount_i64 {
-            return Err(format!("User '{}' does not have sufficient funds", from_user));
+            return Err(format!(
+                "User '{}' does not have sufficient funds",
+                from_user
+            ));
         }
 
         if to_balance.checked_add(amount_i64).is_none() {
@@ -87,12 +105,18 @@ impl Bank {
 
         // Perform the mutable borrows and update the balances
         {
-            let from_user = self.users.get_mut(from_user).ok_or_else(|| format!("User '{}' not found", from_user))?;
+            let from_user = self
+                .users
+                .get_mut(from_user)
+                .ok_or_else(|| format!("User '{}' not found", from_user))?;
             from_user.balance -= amount_i64;
         }
 
         {
-            let to_user = self.users.get_mut(to_user).ok_or_else(|| format!("User '{}' not found", to_user))?;
+            let to_user = self
+                .users
+                .get_mut(to_user)
+                .ok_or_else(|| format!("User '{}' not found", to_user))?;
             to_user.balance += amount_i64;
         }
 
@@ -103,10 +127,12 @@ impl Bank {
     pub fn accrue_interest(&mut self) {
         for user in self.users.values_mut() {
             if user.balance < 0 {
-                let interest = (-user.balance as f64 * self.debit_interest as f64 / 10_000.0) as i64;
+                let interest =
+                    (-user.balance as f64 * self.debit_interest as f64 / 10_000.0) as i64;
                 user.balance -= interest;
             } else {
-                let interest = (user.balance as f64 * self.credit_interest as f64 / 10_000.0) as i64;
+                let interest =
+                    (user.balance as f64 * self.credit_interest as f64 / 10_000.0) as i64;
                 user.balance += interest;
             }
         }
